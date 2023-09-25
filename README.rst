@@ -15,16 +15,15 @@
 
 .. class:: center
 
-    :Название исследуемой задачи: Мое название работы
-    :Тип научной работы: M1P/НИР/CoIS
-    :Автор: Имя Отчество Фамилия
-    :Научный руководитель: степень, Фамилия Имя Отчество
-    :Научный консультант(при наличии): степень, Фамилия Имя Отчество
+    :Название исследуемой задачи: Выделение элементов реакции на электроэнцефалограмме
+    :Тип научной работы: НИР
+    :Автор: Никишкина Евгения Геннадьевна
+    :Научный руководитель: кандидат физико-математических наук, Майсурадзе Арчил Ивериевич
 
 Abstract
 ========
 
-Purus sit amet luctus venenatis lectus magna fringilla. Condimentum id venenatis a condimentum vitae sapien. Auctor neque vitae tempus quam pellentesque nec nam aliquam. Eget egestas purus viverra accumsan in. Nam aliquam sem et tortor. Donec et odio pellentesque diam volutpat commodo. Odio pellentesque diam volutpat commodo sed egestas. Sit amet dictum sit amet justo. Pellentesque sit amet porttitor eget. Imperdiet sed euismod nisi porta lorem mollis aliquam ut. Quis varius quam quisque id diam vel quam elementum. Ornare lectus sit amet est placerat in. Vulputate dignissim suspendisse in est ante. Elit sed vulputate mi sit amet mauris. Egestas sed tempus urna et pharetra pharetra. Viverra tellus in hac habitasse platea dictumst vestibulum rhoncus.
+Целью данной работы было создание эффективного алгоритма для распознавания эмоций человека на основе анализа рядов ЭЭГ. Были рассмотрены и проанализированы различные методы и подходы, в результате чего был выбран оптимальный вариант, который затем был реализован в собственной программе. Также были проведены эксперименты на основе подобранных рядов ЭЭГ, содержащих данные об эмоциональных состояниях. Для детектирования эмоций в рядах ЭЭГ был использован новый подход, основанный на анализе аномалий. Результаты экспериментов продемонстрировали, что разработанный алгоритм позволяет получать интерпретируемые результаты по определению наличия эмоций у человека. Данный метод может быть использован в различных областях, таких как медицина, психология и другие.
 
 Research publications
 ===============================
