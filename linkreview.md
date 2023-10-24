@@ -11,7 +11,6 @@
 | 6 | Automated Emotion Recognition based on Higher Order Statistics and Deep Learning Algorithm | [link](https://www.sciencedirect.com/science/article/pii/S1746809420300239?via%3Dihub) | Для избавления от нерелевантной информации используется метод эволюционного сокращения данных, а именно оптимизация роя частиц. Глубокого обучения на основе LSTM используется для извлечения изменений эмоций из оптимизированных данных, соответствующих помеченным сигналам ЭЭГ. |
 | 7 | WGAN Domain Adaptation for EEG-Based Emotion Recognition | [link](https://link.springer.com/chapter/10.1007/978-3-030-04221-9_25) | В статье мы предлагается новый фреймворк Wasserstein generative adversarial network domain adaptation (WGANDA) для построения моделей распознавания эмоций на основе ЭЭГ. Предлагаемая структура состоит из
 компонентов, подобных GANs, и двухэтапной процедуры обучения с предварительной подготовкой и состязательной подготовкой. Предварительное обучение заключается в сопоставлении исходного домена и целевого домена с общим пространством объектов, а состязательное обучение заключается в сокращении разрыва между отображениями исходного и целевого доменов. |
-| - | --------- | ------ | -------- |
 
 ## про актуальность
 | # | Название  | Ссылка | Описание |
@@ -28,4 +27,3 @@
 | 10 |   Systematic Review for Human EEG Brain Signals Based Emotion Classification, Feature Extraction, Brain Condition, Group Comparison | [link](https://link.springer.com/article/10.1007/s10916-018-1020-8) | В этой статье проводится систематический обзор для составления карты исследований человеческих эмоций на ЭЭГ в виде таксономии. |
 | 11 | Isolation Forest | [link](https://cs.nju.edu.cn/zhouzh/zhouzh.files/publication/icdm08b.pdf) | Про Isolation Forest в целом и в контексте детектирования аномалий. |
 | 12 | Support Vector Method for Novelty Detection | [link](https://proceedings.neurips.cc/paper/1999/file/8725fb777f25776ffa9076e44fcfd776-Paper.pdf) | Базовый метод SVM для детектирования аномалий. |
-| - | --------- | ------ | -------- |
