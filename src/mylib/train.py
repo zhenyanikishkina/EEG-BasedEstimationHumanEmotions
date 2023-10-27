@@ -1,132 +1,151 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-'''
-The :mod:`mylib.train` contains classes:
+import torch
+import torch.nn as nn
+import pandas as pd
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+import seaborn as sns
+from models.constants import *
+from utils.convert_window import convert_to_windows
+from models.tranad import TranAD
+from utils.choose_threshold import get_t
 
-- :class:`mylib.train.Trainer`
+def train_epoch(epoch_step, dataloader, model, optimizer, scheduler, device):
+    model.train()
+    l = nn.MSELoss(reduction = 'none')
+    l1s = []
 
-The :mod:`mylib.train` contains functions:
+    # epoch_step should be >= 1
+    for d, _ in dataloader:
+        optimizer.zero_grad()
 
-- :func:`mylib.train.cv_parameters`
-'''
-from __future__ import print_function
+        d = d.to(device)
+        local_bs = d.shape[0]
+        window = d.permute(1, 0, 2)
+        elem = window[-1, :, :].view(1, local_bs, DIMS)
+        z = model(window, elem)
+        l1 = (1 / epoch_step) * l(z[0], elem) + (1 - 1/epoch_step) * l(z[1], elem)
+        z = z[1]
+        l1s.append(torch.mean(l1).item())
+        loss = torch.mean(l1)
 
-__docformat__ = 'restructuredtext'
+        loss.backward(retain_graph=True)
+        optimizer.step()
 
-import numpy
-from scipy.special import expit
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
+    scheduler.step()
+    print(f'Train loss: {np.mean(l1s)}')
 
-class SyntheticBernuliDataset(object):
-    r'''Base class for synthetic dataset.'''
-    def __init__(self, n=10, m=100, seed=42):
-        r'''Constructor method
+def val_epoch(epoch_step, dataloader, model, device, marker='Val L1', flag=True):
+    model.eval()
+    l = nn.MSELoss(reduction = 'none')
 
-        :param n: the number of feature
-        :type n: int
-        :param m: the number of object
-        :type m: int
-        :param seed: seed for random state.
-        :type seed: int
-        '''
-        rs = numpy.random.RandomState(seed)
+    with torch.no_grad():
+        ls = []
+        l1 = []
+        z1 = []
+        for d, _ in dataloader:
+            d = d.to(device)
+            window = d.permute(1, 0, 2)
+            elem = window[-1, :, :].view(1, -1, DIMS)
+            z = model(window, elem)
+            z = z[1]
+            cur_l = l(z, elem)
+            ls.append(torch.mean(cur_l).item())
+            l1.append(cur_l[0])
+            z1.append(z[0])
 
-        self.w = rs.randn(n) # Генерим вектор параметров из нормального распределения
-        self.X = rs.randn(m, n) # Генерим вектора признаков из нормального распределения
-
-        self.y = rs.binomial(1, expit(self.X@self.w)) # Гипотеза порождения данных - целевая переменная из схемы Бернули
-
-
-class Trainer(object):
-    r'''Base class for all trainer.'''
-    def __init__(self, model, X, Y, seed=42):
-        r'''Constructor method
-
-        :param model: The class with fit and predict methods.
-        :type model: object
-
-        :param X: The array of shape 
-            `num_elements` :math:`\times` `num_feature`.
-        :type X: numpy.array
-        :param Y: The array of shape 
-            `num_elements` :math:`\times` `num_answers`.
-        :type Y: numpy.array
-
-        :param seed: Seed for random state.
-        :type seed: int
-        '''
-        self.model = model
-        self.seed = seed
-        (
-            self.X_train, 
-            self.X_val, 
-            self.Y_train, 
-            self.Y_val
-        ) = train_test_split(X, Y, random_state=self.seed)
-
-    def train(self):
-        r''' Train model
-        '''
-        self.model.fit(self.X_train, self.Y_train)
-
-    def eval(self, output_dict=False):
-        r'''Evaluate model for initial validadtion dataset.
-        '''
-        return classification_report(
-            self.Y_val, 
-            self.model.predict(
-                self.X_val), output_dict=output_dict)
-
-    def test(self, X, Y, output_dict=False):
-        r"""Evaluate model for given dataset.
-        
-        :param X: The array of shape 
-            `num_elements` :math:`\times` `num_feature`.
-        :type X: numpy.array
-        :param Y: The array of shape 
-            `num_elements` :math:`\times` `num_answers`.
-        :type Y: numpy.array
-        """
-        return classification_report(
-            Y, self.model.predict(X), output_dict=output_dict)
+        if flag:
+            print(f'{marker} loss: {np.mean(ls)}')
+        return torch.concat(l1, dim=0), torch.concat(z1, dim=0)
 
 
-def cv_parameters(X, Y, seed=42, minimal=0.1, maximum=25, count=100):
-    r'''Function for the experiment with different regularisation parameters 
-        and return accuracy and weidth for LogisticRegression for each parameter.
+if __name__ == "__main__":
+    mn = torch.full((DIMS,), 1e9)
+    mx = torch.full((DIMS,), -1e9)
+    r_path = PATH + 'train'
+    paths = sorted(os.listdir(r_path))
 
-    :param X: The array of shape 
-        `num_elements` :math:`\times` `num_feature`.
-    :type X: numpy.array
-    :param Y: The array of shape 
-        `num_elements` :math:`\times` `num_answers`.
-    :type Y: numpy.array
+    for name in paths[:8]:
+        cur_tensor = torch.DoubleTensor(np.load(os.path.join(r_path, name)).T)
+        cur_tensor[(cur_tensor > torch.quantile(cur_tensor, 1 - QUANTILE, axis=0)) | (cur_tensor < torch.quantile(cur_tensor, QUANTILE, axis=0))] = 0
+        mn = torch.minimum(mn, torch.min(cur_tensor, dim=0)[0])
+        mx = torch.maximum(mx, torch.max(cur_tensor, dim=0)[0])
 
-    :param seed: Seed for random state.
-    :type seed: int
-    :param minimal: Minimum value for the Cs linspace.
-    :type minimal: int
-    :param maximum: Maximum value for the Cs linspace.
-    :type maximum: int
-    :param count: Number of the Cs points.
-    :type count: int
-    '''
+    trainD = []
+    for name in paths[:8]:
+        cur_tensor = torch.DoubleTensor(np.load(os.path.join(r_path, name)).T)
+        cur_tensor[(cur_tensor > torch.quantile(cur_tensor, 1 - QUANTILE, axis=0)) | (cur_tensor < torch.quantile(cur_tensor, QUANTILE, axis=0))] = 0
+        cur_tensor = (cur_tensor - mn) / (mx - mn)
+        trainD.append(convert_to_windows(cur_tensor))
+    trainD = torch.concat(trainD, dim=0)
+    print('trainD size:', trainD.shape)
 
-    Cs = numpy.linspace(minimal, maximum, count)
-    parameters = []
-    accuracy = []
-    for C in Cs:
-        trainer = Trainer(
-            LogisticRegression(penalty='l1', solver='saga', C=1/C),
-            X, Y,
-        )
+    valD = []
+    for name in paths[8:]:
+        cur_tensor = torch.DoubleTensor(np.load(os.path.join(r_path, name)).T)
+        cur_tensor[(cur_tensor > torch.quantile(cur_tensor, 1 - QUANTILE, axis=0)) | (cur_tensor < torch.quantile(cur_tensor, QUANTILE, axis=0))] = 0
+        cur_tensor = (cur_tensor - mn) / (mx - mn)
+        valD.append(convert_to_windows(cur_tensor))
+    valD = torch.concat(valD, dim=0)
+    print('valD size:', valD.shape)
 
-        trainer.train()
+    r_path = PATH + 'val/0'
+    paths = sorted(os.listdir(r_path))
 
-        accuracy.append(trainer.eval(output_dict=True)['accuracy'])
-        
-        parameters.extend(trainer.model.coef_)
+    test0 = []
+    for name in paths:
+        cur_tensor = torch.DoubleTensor(np.load(os.path.join(r_path, name)).T)
+        cur_tensor[(cur_tensor > torch.quantile(cur_tensor, 1 - QUANTILE, axis=0)) | (cur_tensor < torch.quantile(cur_tensor, QUANTILE, axis=0))] = 0
+        cur_tensor = (cur_tensor - mn) / (mx - mn)
+        test0.append(convert_to_windows(cur_tensor))
+    test0 = torch.concat(test0, dim=0)
+    print('test0 size:', test0.shape)
 
-    return Cs, accuracy, parameters
+    r_path = PATH + 'val/1'
+    paths = sorted(os.listdir(r_path))
+
+    test1 = []
+    for name in paths:
+        cur_tensor = torch.DoubleTensor(np.load(os.path.join(r_path, name)).T)
+        cur_tensor[(cur_tensor > torch.quantile(cur_tensor, 1 - QUANTILE, axis=0)) | (cur_tensor < torch.quantile(cur_tensor, QUANTILE, axis=0))] = 0
+        cur_tensor = (cur_tensor - mn) / (mx - mn)
+        test1.append(convert_to_windows(cur_tensor))
+    test1 = torch.concat(test1, dim=0)
+    print('test1 size:', test1.shape)
+
+    train_dataset = torch.utils.data.TensorDataset(trainD, trainD)
+    train_dataloader =  torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=0, shuffle=False)
+
+    val_dataset = torch.utils.data.TensorDataset(valD, valD)
+    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=0, shuffle=False)
+
+    test0_dataset = torch.utils.data.TensorDataset(test0, test0)
+    test0_dataloader = torch.utils.data.DataLoader(test0_dataset, batch_size=BATCH_SIZE, num_workers=0, shuffle=False)
+    test1_dataset = torch.utils.data.TensorDataset(test1, test1)
+    test1_dataloader = torch.utils.data.DataLoader(test1_dataset, batch_size=BATCH_SIZE, num_workers=0, shuffle=False)
+
+    device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
+    model = TranAD(DIMS).double().to(device)
+    optimizer = torch.optim.AdamW(model.parameters() , lr=0.001, weight_decay=1e-5)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 5, 0.9)
+
+    for epoch in range(1, 7):
+        print(f'Epoch {epoch}')
+        train_epoch(epoch, train_dataloader, model, optimizer, scheduler, device)
+        val_epoch(epoch, train_dataloader, model, device, 'Train L1')
+        val_epoch(epoch, val_dataloader, model, device)
+        print()
+
+    loss, _ = val_epoch(-1, test1_dataloader, model, device, flag=False)
+    lossT, _ = val_epoch(-1, train_dataloader, model, device, flag=False)
+    loss = np.array(loss.cpu())
+    lossT = np.array(lossT.cpu())
+
+    ths = np.zeros(DIMS)
+    for i in range(loss.shape[1]):
+        lt, l = lossT[:, i], loss[:, i]
+        cur_t = get_t(lt, l)
+        ths[i] = cur_t
+
+    print('Thresholds:', ths)
