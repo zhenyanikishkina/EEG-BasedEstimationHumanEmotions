@@ -1,8 +1,6 @@
+torch==1.12.1
 numpy==1.21.5
 scipy==1.4.1
 scikit-learn==1.0.2
-torch==1.12.1
-tqdm
 matplotlib
-SciencePlots
-xlrd==1.2.0
+tqdm
