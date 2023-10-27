@@ -130,7 +130,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.AdamW(model.parameters() , lr=0.001, weight_decay=1e-5)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 5, 0.9)
 
-    for epoch in range(1, 7):
+    for epoch in range(1, 11):
         print(f'Epoch {epoch}')
         train_epoch(epoch, train_dataloader, model, optimizer, scheduler, device)
         val_epoch(epoch, train_dataloader, model, device, 'Train L1')
